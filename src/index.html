@@ -1,13 +1,30 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>preJS minimum template</title>
-</head>
-<body>
-    <button id="play-button" type="button">再生</button>
-    <div id="player"></div>
+    <title>seqimgs-player デモ</title>
+  </head>
+  <body>
+    <main class="demo">
+      <header class="demo__header">
+        <h1>seqimgs-player デモ</h1>
+      </header>
+
+      <section class="demo__controls">
+        <button id="preload-button" type="button">プリロード</button>
+        <button id="play-button" type="button">再生</button>
+        <button id="pause-button" type="button">一時停止</button>
+        <button id="stop-button" type="button">停止</button>
+      </section>
+
+      <section class="demo__player">
+        <div id="player" class="demo__viewport" aria-live="polite"></div>
+      </section>
+
+
+    </main>
+
     <script type="module" src="/index.js"></script>
-</body>
+  </body>
 </html>
