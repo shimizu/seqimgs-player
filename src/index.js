@@ -9,7 +9,7 @@ const player = new SeqImgsPlayer({
   extension: 'jpeg',
   interval: 80,
   loop: true,
-  publicPath: '/imgs/',
+  publicPath: './imgs/',
   autoPlay: false
 })
 
