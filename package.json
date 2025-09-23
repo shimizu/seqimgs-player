@@ -1,5 +1,5 @@
 {
-  "name": "prejs-minimum-template",
+  "name": "seqimgs-playe",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -12,14 +12,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shimizu/prejs-minimum-template"
+    "url": "git+https://github.com/shimizu/seqimgs-playe"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/shimizu/prejs-minimum-template/issues"
+    "url": "https://github.com/shimizu/seqimgs-playe/issues"
   },
-  "homepage": "https://github.com/shimizu/prejs-minimum-template#readme",
+  "homepage": "https://github.com/shimizu/seqimgs-playe#readme",
   "devDependencies": {
     "@babel/core": "^7.28.4",
     "@babel/preset-env": "^7.28.3",

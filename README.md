@@ -1,6 +1,6 @@
-# preJS minimum template
+# seqimgs-player
 
-preJSプロジェクトのミニマムテンプレート
+連番画像をパラパラ漫画のように再生するライブラリ
 
 ## インストール
 
