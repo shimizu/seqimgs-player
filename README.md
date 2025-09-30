@@ -76,7 +76,7 @@ HTML 側には描画用の要素を用意しておきます。
 
 ## リサイズ対応（レスポンシブ画像セット）
 
-デモ実装 (`src/index.js`) には、画面幅や手動操作で画像セットを切り替える `createResponsivePlayer()` ラッパーを用意しています。`variants` に解像度別の連番画像セットを登録し、`responsiveSwitching: true` を指定すると `matchMedia('(max-width: 900px)')` と `window.resize` を監視して自動で最適なセットへ切り替えます。切り替え時は再生継続中でも `preload()` と `play()` を再実行して状態を復元します。
+デモ実装では `src/responsive-player.js` の `createResponsivePlayer()` ラッパーを利用し、画面幅や手動操作で画像セットを切り替えています。`variants` に解像度別の連番画像セットを登録し、`responsiveSwitching: true` を指定すると `matchMedia('(max-width: 900px)')` と `window.resize` を監視して自動で最適なセットへ切り替えます。切り替え時は再生継続中でも `preload()` と `play()` を再実行して状態を復元します。
 
 ```js
 const variantSets = {
