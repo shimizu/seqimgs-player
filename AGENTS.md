@@ -1,16 +1,16 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-The Vite workspace keeps all source modules under `src/`. Entry point `src/index.js` bootstraps styles from `src/index.scss` and is loaded by `src/index.html`, which also mounts the `#player` container expected by the sequence player. Static assets live in `public/`; sequential frames must be stored in `public/imgs` using zero-padded names such as `takasaki_0042.jpeg`. Build artefacts are emitted to `dist/` (ignored by git). Configuration tweaks belong in `vite.config.js`.
+Source modules live in `src/`, with `src/index.js` loading global styles from `src/index.scss` and mounting into `src/index.html`. Store playback frames under `public/imgs` using zero-padded names such as `takasaki_0042.jpeg`; other static assets belong in `public/`. Build output is emitted to `dist/` and remains untracked. Limit configuration changes to `vite.config.js` so the Vite toolchain stays predictable.
 
 ## Build, Test, and Development Commands
-Run `npm install` once to populate `node_modules/`. Use `npm run dev` to launch the hot-reload development server. `npm run build` performs a production build and prints any bundling issues. `npm run preview` serves the built `dist/` bundle for smoke-testing before deployment. `npm run deploy` publishes `dist/` to GitHub Pages via `gh-pages -d dist`; ensure your branch is clean and you are authenticated before running it.
+Run `npm install` once per environment to hydrate `node_modules/`. Use `npm run dev` for a hot-reload dev server while iterating on frame sequences. `npm run build` compiles the production bundle and surfaces bundler warnings. Inspect the built bundle locally with `npm run preview`. Deploy to GitHub Pages via `npm run deploy`; confirm the working tree is clean and GitHub credentials are valid first.
 
 ## Coding Style & Naming Conventions
-Write modern ES modules and prefer declarative functions over globals. Follow two-space indentation in JavaScript and SCSS, and four spaces in HTML templates, mirroring the existing files. Name variables in camelCase, SCSS variables with `$snake_case`, and keep asset prefixes descriptive (`playerFrame_####.jpeg`). When adding styles, group related rules and re-use existing SCSS variables rather than hardcoding colors. If you introduce formatters, document them in this file and wire them through an npm script.
+Author modern ES modules with two-space indentation in JavaScript and SCSS, and four spaces in HTML templates. Favor declarative helpers over globals. Name JavaScript variables in camelCase, SCSS tokens with `$snake_case`, and asset sequences with descriptive prefixes such as `playerFrame_####.jpeg`. Reuse existing SCSS variables instead of hardcoding colors. Document any new formatters or linters and wire them through an npm script.
 
 ## Testing Guidelines
-No automated harness ships yet. Before opening a PR, validate your change by running `npm run dev`, exercising the playback controls, and verifying the sequential image flow without dropped frames. Capture browser console output for regressions. After `npm run build`, open `npm run preview` and confirm assets load from `/imgs/`. If you add tests, include the script (`npm test`) and explain the expected coverage in the PR.
+No automated harness is bundled yet. Manually vet changes by running `npm run dev`, cycling through playback controls, and watching the console for runtime warnings. After a successful production build, launch `npm run preview` and confirm frames load from `/imgs/`. If you add tests, expose the runner through `npm test` and note the expected coverage in your PR description.
 
 ## Commit & Pull Request Guidelines
-Write concise, present-tense commit messages (e.g., `プレイヤー初期化修正` or `Add frame preloader`). Squash trivial fixes locally. Pull requests must describe the change, list manual verification steps, and attach screenshots or short GIFs when UI behavior changes. Link related issues with `Fixes #123`. Request review before merging.
+Write concise, present-tense commit messages (e.g., `Add frame preloader`). Squash local fixups before sharing. PRs should summarize the change, list manual verification steps, and attach screenshots or short GIFs when UI behavior shifts. Reference related work with `Fixes #123` and request a review prior to merge.

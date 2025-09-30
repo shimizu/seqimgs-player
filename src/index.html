@@ -11,15 +11,18 @@
         <h1>seqimgs-player デモ</h1>
       </header>
 
-      <section class="demo__controls">
-        <button id="preload-button" type="button">プリロード</button>
-        <button id="play-button" type="button">再生</button>
-        <button id="pause-button" type="button">一時停止</button>
-        <button id="stop-button" type="button">リセット</button>
-      </section>
+      <section class="demo__layout" aria-label="シーケンス再生コントロール">
+        <div class="demo__controls" role="group" aria-label="再生操作">
+          <button id="preload-button" type="button">プリロード</button>
+          <button id="play-button" type="button">再生</button>
+          <button id="pause-button" type="button">一時停止</button>
+          <button id="stop-button" type="button">リセット</button>
+          <button id="resize-button" type="button">サイズ変更</button>
+        </div>
 
-      <section class="demo__player">
-        <div id="player" class="demo__viewport" aria-live="polite"></div>
+        <div class="demo__player">
+          <div id="player" class="demo__viewport" aria-live="polite"></div>
+        </div>
       </section>
 
 

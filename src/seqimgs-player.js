@@ -9,6 +9,7 @@
  * @property {boolean} [autoPlay] プリロード完了後に自動再生するかどうか。
  * @property {'canvas'|'img'} [renderTarget] 描画先。既定は 'canvas'（フリッカー低減）。
  * @property {number} [fps] interval の代わりに FPS 指定も可能（優先度: fps > interval）。
+ * @property {boolean} [responsiveSwitching] リサイズ連動切替を想定したラッパー向けフラグ。
  */
 
 /**
@@ -24,7 +25,8 @@ const DEFAULT_OPTIONS = {
   publicPath: '/imgs/',
   autoPlay: true,
   renderTarget: 'canvas',
-  fps: undefined
+  fps: undefined,
+  responsiveSwitching: false
 }
 
 /**
@@ -264,6 +266,13 @@ export class SeqImgsPlayer {
     this.canvasEl = null
     this.ctx = null
     this.imageEl = null
+  }
+
+  /**
+   * dispose のエイリアス。既存APIとの互換用に提供。
+   */
+  destroy () {
+    this.dispose()
   }
 
   /**
