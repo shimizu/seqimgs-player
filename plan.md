@@ -16,7 +16,7 @@ import { SeqImgsPlayer } from './seqimgs-player.js';
 const player = new SeqImgsPlayer({
   mountId: 'player',
   imageNames: ['takasaki_0000', 'takasaki_0001'],
-  extension: 'jpeg',
+  extension: 'webp',
   interval: 120,
   loop: true
 });
@@ -27,7 +27,7 @@ player.play();
 ## 3. オプション設計
 - `mountId: string` (必須) — 再生対象の DOM 要素 ID。
 - `imageNames: string[]` (必須) — 拡張子を除いたファイル名配列。
-- `extension: string` (任意, 既定値: `jpeg`) — 拡張子。
+- `extension: string` (任意, 既定値: `webp`) — 拡張子。
 - `interval: number` (任意, 既定値: `100`ms) — 各フレーム間隔。
 - `loop: boolean` (任意, 既定値: `true`) — ループ再生。
 - `publicPath: string` (任意, 既定値: `/imgs/`) — 画像ルート。

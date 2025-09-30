@@ -13,6 +13,14 @@
 * `src/index.scss`: デモ用スタイル。ロジックとは独立しています。
 * `public/imgs/`: フレーム格納ディレクトリ。`scene_0000.webp` のようにゼロ埋めを推奨。
 
+## リサイズ対応とバリアント切替
+
+* `createResponsivePlayer()` は `src/index.js` 内のラッパー実装で、`desktop`/`mobile` など解像度ごとの画像セット（バリアント）を束ねて `SeqImgsPlayer` を生成します。
+* ブレークポイントは `window.matchMedia('(max-width: 900px)')` と `window.innerWidth <= 900` のフォールバックで判定し、`resize` と `matchMedia` の両イベントをリッスンします。短時間の連続発火は `RESIZE_DEBOUNCE_MS`（既定 150ms）のタイマーで抑制します。
+* バリアント切替時は既存のプレイヤーに対して `destroy()` を呼び、`preserveState` オプションが真なら `isReady`/`isPlaying` を引き継げるように `preload()` や `play()` を再実行します。これにより、再生中のままでもシームレスに画像サイズを差し替えます。
+* ラッパーは現在のバリアントとプレイヤーをリスナーへ通知することで、UI 側（例: `resize-button` のラベル、`.demo__viewport` の `data-variant` 属性）と同期を取ります。
+* `cycleVariant()` は手動トグル用 API で、用意されたバリアント配列を巡回して表示幅に依存しない切替テストを可能にします。
+
 ## コアクラス `SeqImgsPlayer`
 
 ### コンストラクタの責務

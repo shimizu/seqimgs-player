@@ -12,7 +12,7 @@
 ## 画像アセット構成
 - ディレクトリを `public/imgs/desktop` と `public/imgs/mobile` に分割。
 - ベース名と拡張子を共通化し、ゼロパディングを維持。
-  - 例: `public/imgs/desktop/takasaki_0042.jpeg`, `public/imgs/mobile/takasaki_0042.jpeg`
+  - 例: `public/imgs/desktop/takasaki_0042.webp`, `public/imgs/mobile/takasaki_0042.webp`
 - モバイル版はリサイズ済み (幅 720px 目安)、デスクトップ版は元解像度 (幅 1280px 以上) を想定。
 - 新たなセットを追加する場合は `variant` 名でサブディレクトリを増やすだけで済むよう命名を統一。
 

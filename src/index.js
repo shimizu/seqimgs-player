@@ -20,7 +20,7 @@ const variantSets = {
 
 const basePlayerOptions = {
   mountId: 'player',
-  extension: 'jpeg',
+  extension: 'webp',
   interval: 80,
   loop: true,
   autoPlay: false,

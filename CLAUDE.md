@@ -23,7 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 │   ├── index.js         # メインJavaScriptファイル（現在は最小構成）
 │   └── index.scss       # メインスタイルファイル
 ├── src/
-│   └── imgs/            # 連番画像ディレクトリ（takasaki_0000.jpeg ~ takasaki_xxxx.jpeg）
+│   └── imgs/            # 連番画像ディレクトリ（takasaki_0000.webp ~ takasaki_xxxx.webp）
 ├── vite.config.js       # Vite設定（root: 'src', build.outDir: '../dist'）
 └── package.json         # 依存関係・スクリプト
 ```
@@ -36,7 +36,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## アーキテクチャ概要
 このプロジェクトは連番画像プレイヤーの実装を目的としています：
-- `src/imgs/` に連番画像ファイル（takasaki_xxxx.jpeg形式）が格納
+- `src/imgs/` に連番画像ファイル（takasaki_xxxx.webp形式）が格納
 - メインの実装は `src/index.js` で行う予定
 - プレイヤーUI要素は `src/index.html` の `#player` div内に構築
 
@@ -45,7 +45,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - ビルド出力は `dist/` ディレクトリ
 - IE11以外の古いブラウザをサポート
 - GitHub Pagesへのデプロイが可能
-- 連番画像ファイルの命名規則: `takasaki_xxxx.jpeg` (4桁ゼロパディング、将来的にライブラリのプロパティで指定可能予定)
+- 連番画像ファイルの命名規則: `takasaki_xxxx.webp` (4桁ゼロパディング、将来的にライブラリのプロパティで指定可能予定)
 
 ## 言語・地域設定
 - **主要言語**: 日本語

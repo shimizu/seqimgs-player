@@ -61,6 +61,7 @@ HTML 側には描画用の要素を用意しておきます。
 | `publicPath`   | string           | `/imgs/`   | 静的ファイルのベースパス。Vite の `public` 配下を想定。    |
 | `autoPlay`     | boolean          | `true`     | コンストラクタ後に自動で `preload()`→`play()` を実行。 |
 | `renderTarget` | `'canvas'｜'img'` | `'canvas'` | 描画ターゲット。既定は Canvas。                    |
+| `responsiveSwitching` | boolean | `false` | リサイズ監視を行うラッパーから利用。`true` でバリアント切替時に状態を保存。 |
 
 ## 公開メソッド
 
@@ -72,6 +73,35 @@ HTML 側には描画用の要素を用意しておきます。
 * `setFps(fps)` – FPS を直接指定。`interval` より優先。
 * `setLoop(bool)` – ループ再生の切替。
 * `dispose()` – DOM とキャッシュを解放。`ImageBitmap.close()` による GPU リソース解放も実施。
+
+## リサイズ対応（レスポンシブ画像セット）
+
+デモ実装 (`src/index.js`) には、画面幅や手動操作で画像セットを切り替える `createResponsivePlayer()` ラッパーを用意しています。`variants` に解像度別の連番画像セットを登録し、`responsiveSwitching: true` を指定すると `matchMedia('(max-width: 900px)')` と `window.resize` を監視して自動で最適なセットへ切り替えます。切り替え時は再生継続中でも `preload()` と `play()` を再実行して状態を復元します。
+
+```js
+const variantSets = {
+  desktop: { imageNames, publicPath: './imgs/desktop/' },
+  mobile: { imageNames, publicPath: './imgs/mobile/' }
+}
+
+const responsiveController = createResponsivePlayer({
+  variants: variantSets,
+  playerOptions: {
+    mountId: 'player',
+    extension: 'webp',
+    responsiveSwitching: true,
+    autoPlay: false
+  },
+  breakpointQuery: '(max-width: 900px)',
+  debounceMs: 150
+})
+
+responsiveController.onVariantChange(({ variantKey }) => {
+  console.log(`現在のバリアント: ${variantKey}`)
+})
+```
+
+ラッパーは `cycleVariant()` で手動切り替え、`forceVariant('desktop')` で任意バリアント固定、`setResponsiveSwitching(false)` で監視停止といった制御も提供しています。UI 側では返却される `player` インスタンスにアクセスして既存の再生ボタン操作を再利用できます。
 
 ## 開発コマンド
 
