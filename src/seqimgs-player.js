@@ -24,7 +24,8 @@ const DEFAULT_OPTIONS = {
   publicPath: '/imgs/',
   autoPlay: true,
   renderTarget: 'canvas',
-  fps: undefined
+  fps: undefined,
+  transparentBackground: true
 }
 
 /**
@@ -66,7 +67,7 @@ export class SeqImgsPlayer {
       this.canvasEl.style.width = '100%'
       this.canvasEl.style.height = 'auto'
       this.mountEl.appendChild(this.canvasEl)
-      this.ctx = this.canvasEl.getContext('2d', { alpha: false })
+      this.ctx = this.canvasEl.getContext('2d', { alpha: this.options.transparentBackground })
     } else {
       this.imageEl = document.createElement('img')
       this.imageEl.decoding = 'async'
