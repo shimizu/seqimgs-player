@@ -9,7 +9,6 @@
  * @property {boolean} [autoPlay] プリロード完了後に自動再生するかどうか。
  * @property {'canvas'|'img'} [renderTarget] 描画先。既定は 'canvas'（フリッカー低減）。
  * @property {number} [fps] interval の代わりに FPS 指定も可能（優先度: fps > interval）。
- * @property {boolean} [responsiveSwitching] リサイズ連動切替を想定したラッパー向けフラグ。
  */
 
 /**
@@ -26,7 +25,7 @@ const DEFAULT_OPTIONS = {
   autoPlay: true,
   renderTarget: 'canvas',
   fps: undefined,
-  responsiveSwitching: false
+  transparentBackground: true
 }
 
 /**
@@ -68,7 +67,7 @@ export class SeqImgsPlayer {
       this.canvasEl.style.width = '100%'
       this.canvasEl.style.height = 'auto'
       this.mountEl.appendChild(this.canvasEl)
-      this.ctx = this.canvasEl.getContext('2d', { alpha: false })
+      this.ctx = this.canvasEl.getContext('2d', { alpha: this.options.transparentBackground })
     } else {
       this.imageEl = document.createElement('img')
       this.imageEl.decoding = 'async'
@@ -116,7 +115,6 @@ export class SeqImgsPlayer {
     if (this.isReady) return
 
     if (!this.preloadPromise) {
-      // createImageBitmap が使えるならビットマップで保持（描画高速・フリッカー抑制）
       const useBitmap = typeof createImageBitmap === 'function'
       this.preloadPromise = Promise.all(
         this.options.imageNames.map((name) => this.#preloadFrame(name, useBitmap))
@@ -127,19 +125,21 @@ export class SeqImgsPlayer {
       this.preloadedFrames = await this.preloadPromise
       this.isReady = true
 
-      // 最初のフレームでキャンバスサイズを確定しておく（レイアウトシェイク防止）
       const first = this.preloadedFrames[0]
       if (first) {
         const { width, height } = await this.#frameSize(first)
         if (this.canvasEl) {
-          // デバイスピクセル比に合わせて内部解像度を確保（にじみ/ちらつき低減）
+          // ★ ここは元のまま: 内部ピクセルは dpr 倍で確保
           const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1))
-          this.canvasEl.width = Math.round(width * dpr)
+          this.canvasEl.width  = Math.round(width  * dpr)
           this.canvasEl.height = Math.round(height * dpr)
           this.canvasEl.style.aspectRatio = `${width} / ${height}`
-          if (this.ctx) this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+          if (this.ctx) {
+            // ★ 修正ポイント: 以前は setTransform(dpr, 0, 0, dpr, 0, 0)
+            //    → 内部ピクセルに対して等倍で描画するため単位行列にする
+            this.ctx.setTransform(1, 0, 0, 1, 0, 0)
+          }
         }
-        // 1枚目を即座に描画/表示
         this.#setFrame(0)
       }
     } catch (error) {
@@ -269,13 +269,6 @@ export class SeqImgsPlayer {
   }
 
   /**
-   * dispose のエイリアス。既存APIとの互換用に提供。
-   */
-  destroy () {
-    this.dispose()
-  }
-
-  /**
    * プリロード完了を保証。
    * @returns {Promise<void>}
    */
@@ -313,10 +306,8 @@ export class SeqImgsPlayer {
     this.currentIndex = index
 
     if (this.ctx && this.canvasEl) {
-      // キャンバス描画（ちらつき最小）
+      // 内部ピクセル（dpr 適用後のキャンバス width/height）をそのまま利用
       const { width, height } = this.canvasEl
-      // 内部ピクセルはdpr適用済みのため draw サイズは CSSピクセルでOK
-      // ただし setTransform で拡縮済。ここでは 0,0,width/dpr,height/dpr 風に描画される。
       this.ctx.clearRect(0, 0, width, height)
       if (frame instanceof ImageBitmap) {
         this.ctx.drawImage(frame, 0, 0, width, height)
@@ -324,15 +315,13 @@ export class SeqImgsPlayer {
         this.ctx.drawImage(frame, 0, 0, width, height)
       }
     } else if (this.imageEl) {
-      // 従来の <img> 切替（decode 済みなのでフリッカーを最小化）
-      // src を直接差し替える代わりに、同一オブジェクトURL/同一srcでの再解決を避ける
       if (frame instanceof ImageBitmap) {
-        // ImageBitmap は <img>.src に直接入れられないため、描画は canvas 推奨
         console.warn('renderTarget: "img" では ImageBitmap を直接表示できません。canvas を使用してください。')
       } else {
         this.imageEl.src = frame.src
       }
     }
+
   }
 
   /**
