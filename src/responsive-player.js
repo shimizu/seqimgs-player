@@ -16,6 +16,7 @@ export function createResponsivePlayer ({
   breakpointWidth,
   debounceMs
 }) {
+  // NOTE: createResponsivePlayer は SeqImgsPlayer の生成と破棄を肩代わりし、レスポンシブ切り替え戦略を一箇所に閉じ込める役割を持つ。
   const variantEntries = variants ?? {}
   const variantKeys = Object.keys(variantEntries)
   const availableVariantKeys = variantKeys
@@ -38,6 +39,8 @@ export function createResponsivePlayer ({
   const effectiveDebounceMs = Number.isFinite(debounceMs)
     ? Number(debounceMs)
     : 150
+
+  // NOTE: matchMedia を優先しつつ、SSR やテスト環境など window サイズ情報しか無いケースもカバーする。
 
   // 現在のプレイヤー状態と監視用フラグを保持。
   let currentPlayer = null
@@ -123,6 +126,8 @@ export function createResponsivePlayer ({
     const shouldPreserve = Boolean(preserveState)
     const wasPlaying = shouldPreserve && previousPlayer?.isPlaying === true
     const wasReady = shouldPreserve && previousPlayer?.isReady === true
+
+    // NOTE: destroy() が例外を投げるとチェーン全体が止まるため、例外は握りつぶしてクリーンアップ継続。
 
     if (previousPlayer) {
       try {
@@ -239,6 +244,7 @@ export function createResponsivePlayer ({
       return { player: currentPlayer, variantKey: currentVariantKey }
     })
     if (responsiveEnabled) {
+      // NOTE: 初期マウント時に responsiveSwitching が有効ならリスナーを同時に登録し、外部からの制御と整合性を取る。
       enableListeners()
     }
   }
@@ -296,6 +302,7 @@ export function createResponsivePlayer ({
       if (nextEnabled === responsiveEnabled) return
       responsiveEnabled = nextEnabled
       if (responsiveEnabled) {
+        // NOTE: リアルタイムで responsiveSwitching を切り替えるユースケース（例: 管理画面での手動操作）を想定し、再度レスポンシブ判定を走らせる。
         enableListeners()
         scheduleVariantUpdate({ preserveState: true })
       } else {
