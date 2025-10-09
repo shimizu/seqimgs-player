@@ -9,6 +9,8 @@
  * @property {boolean} [autoPlay] プリロード完了後に自動再生するかどうか。
  * @property {'canvas'|'img'} [renderTarget] 描画先。既定は 'canvas'（フリッカー低減）。
  * @property {number} [fps] interval の代わりに FPS 指定も可能（優先度: fps > interval）。
+ * @property {() => void} [onPreloadStart] プリロード開始時に呼ばれるコールバック。
+ * @property {() => void} [onPreloadEnd] プリロード完了時に呼ばれるコールバック。
  */
 
 /**
@@ -25,7 +27,9 @@ const DEFAULT_OPTIONS = {
   autoPlay: true,
   renderTarget: 'canvas',
   fps: undefined,
-  transparentBackground: true
+  transparentBackground: true,
+  onPreloadStart: undefined,
+  onPreloadEnd: undefined
 }
 
 /**
@@ -64,8 +68,8 @@ export class SeqImgsPlayer {
       // 合成レイヤー化でティア抑制
       this.canvasEl.style.willChange = 'transform, opacity'
       this.canvasEl.style.display = 'block'
-      this.canvasEl.style.width = '100%'
-      this.canvasEl.style.height = 'auto'
+//      this.canvasEl.style.width = '100%'
+//      this.canvasEl.style.height = 'auto'
       this.mountEl.appendChild(this.canvasEl)
       this.ctx = this.canvasEl.getContext('2d', { alpha: this.options.transparentBackground })
     } else {
@@ -115,6 +119,13 @@ export class SeqImgsPlayer {
     if (this.isReady) return
 
     if (!this.preloadPromise) {
+      if (typeof this.options.onPreloadStart === 'function') {
+        try { this.options.onPreloadStart() } catch (error) { console.error('onPreloadStart コールバックでエラー:', error) }
+      }
+      // プリロード中であることを利用側がスタイルで判別できるようにする
+      if (this.canvasEl) {
+        this.canvasEl.classList.add('player-loading')
+      }
       const useBitmap = typeof createImageBitmap === 'function'
       this.preloadPromise = Promise.all(
         this.options.imageNames.map((name) => this.#preloadFrame(name, useBitmap))
@@ -124,6 +135,13 @@ export class SeqImgsPlayer {
     try {
       this.preloadedFrames = await this.preloadPromise
       this.isReady = true
+      if (typeof this.options.onPreloadEnd === 'function') {
+        try { this.options.onPreloadEnd() } catch (error) { console.error('onPreloadEnd コールバックでエラー:', error) }
+      }
+      // プリロード完了後はローディング表示を解除
+      if (this.canvasEl) {
+        this.canvasEl.classList.remove('player-loading')
+      }
 
       const first = this.preloadedFrames[0]
       if (first) {
@@ -131,9 +149,12 @@ export class SeqImgsPlayer {
         if (this.canvasEl) {
           // ★ ここは元のまま: 内部ピクセルは dpr 倍で確保
           const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1))
+          this.canvasEl.style.width = '100%'
+          this.canvasEl.style.height = 'auto'
           this.canvasEl.width  = Math.round(width  * dpr)
           this.canvasEl.height = Math.round(height * dpr)
-          this.canvasEl.style.aspectRatio = `${width} / ${height}`
+
+          //this.canvasEl.style.aspectRatio = `${width} / ${height}`
           if (this.ctx) {
             // ★ 修正ポイント: 以前は setTransform(dpr, 0, 0, dpr, 0, 0)
             //    → 内部ピクセルに対して等倍で描画するため単位行列にする
@@ -143,6 +164,10 @@ export class SeqImgsPlayer {
         this.#setFrame(0)
       }
     } catch (error) {
+      // 失敗時もローディングクラスが残らないようにする
+      if (this.canvasEl) {
+        this.canvasEl.classList.remove('player-loading')
+      }
       this.preloadPromise = null
       throw error
     }
