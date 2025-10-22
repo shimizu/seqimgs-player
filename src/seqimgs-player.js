@@ -11,6 +11,11 @@
  * @property {number} [fps] interval の代わりに FPS 指定も可能（優先度: fps > interval）。
  * @property {() => void} [onPreloadStart] プリロード開始時に呼ばれるコールバック。
  * @property {() => void} [onPreloadEnd] プリロード完了時に呼ばれるコールバック。
+ * @property {number} [preloadTimeoutMs] 1フレームのプリロードのタイムアウト(ms)。デフォルト10000。
+ * @property {number} [fallbackTimeoutMs] フォールバック経路のタイムアウト(ms)。デフォルト8000。
+ * @property {number} [maxConcurrent] プリロードの同時実行数の上限。デフォルト6。
+ * @property {boolean} [disableBitmap] createImageBitmapを無効化して<img>経路を強制。
+ * @property {boolean} [disableForceCache] fetchのcache:'force-cache'を無効化（切り分け用）。
  */
 
 /**
@@ -29,7 +34,13 @@ const DEFAULT_OPTIONS = {
   fps: undefined,
   transparentBackground: true,
   onPreloadStart: undefined,
-  onPreloadEnd: undefined
+  onPreloadEnd: undefined,
+  // ハング対策用 追加オプション
+  preloadTimeoutMs: 10000,
+  fallbackTimeoutMs: 8000,
+  maxConcurrent: 6,
+  disableBitmap: false,
+  disableForceCache: false
 }
 
 /**
@@ -68,8 +79,8 @@ export class SeqImgsPlayer {
       // 合成レイヤー化でティア抑制
       this.canvasEl.style.willChange = 'transform, opacity'
       this.canvasEl.style.display = 'block'
-//      this.canvasEl.style.width = '100%'
-//      this.canvasEl.style.height = 'auto'
+      // this.canvasEl.style.width = '100%'
+      // this.canvasEl.style.height = 'auto'
       this.mountEl.appendChild(this.canvasEl)
       this.ctx = this.canvasEl.getContext('2d', { alpha: this.options.transparentBackground })
     } else {
@@ -101,6 +112,8 @@ export class SeqImgsPlayer {
     this._lastTs = 0
     /** @type {number | null} */
     this._rafId = null
+    /** @type {boolean} */
+    this._hasImageBitmap = (!this.options.disableBitmap) && (typeof createImageBitmap === 'function')
 
     if (this.options.autoPlay) {
       this.preload()
@@ -126,14 +139,46 @@ export class SeqImgsPlayer {
       if (this.canvasEl) {
         this.canvasEl.classList.add('player-loading')
       }
-      const useBitmap = typeof createImageBitmap === 'function'
-      this.preloadPromise = Promise.all(
-        this.options.imageNames.map((name) => this.#preloadFrame(name, useBitmap))
-      )
+      // 変更点：並列数制限 + タイムアウト + フォールバック + 部分成功
+      const useBitmap = this._hasImageBitmap
+      const worker = async (name) => {
+        try {
+          // 1st: 通常経路（timeout付き）
+          const primary = this.#withTimeout(
+            this.#preloadFrame(name, useBitmap),
+            this.options.preloadTimeoutMs,
+            `preload:${name}`
+          )
+          return await primary
+        } catch (e1) {
+          console.warn('[preload warn]', name, e1 && e1.message ? e1.message : e1)
+          try {
+            // 2nd: <img> 経路（timeout付き）
+            const fallback = this.#withTimeout(
+              this.#preloadViaImage(this.#buildUrl(name)),
+              this.options.fallbackTimeoutMs,
+              `fallback:${name}`
+            )
+            return await fallback
+          } catch (e2) {
+            console.error('[preload fail]', name, e2 && e2.message ? e2.message : e2)
+            return null // 失敗は null として返す（後でフィルタ）
+          }
+        }
+      }
+      this.preloadPromise = (async () => {
+        const results = await this.#mapLimit(this.options.imageNames, this.options.maxConcurrent, worker)
+        return results
+      })()
     }
 
     try {
-      this.preloadedFrames = await this.preloadPromise
+      // 部分成功で続行（nullは除外）
+      const settled = await this.preloadPromise
+      this.preloadedFrames = (settled || []).filter(Boolean)
+      if (this.preloadedFrames.length === 0) {
+        throw new Error('全フレームのプリロードに失敗しました')
+      }
       this.isReady = true
       if (typeof this.options.onPreloadEnd === 'function') {
         try { this.options.onPreloadEnd() } catch (error) { console.error('onPreloadEnd コールバックでエラー:', error) }
@@ -147,21 +192,19 @@ export class SeqImgsPlayer {
       if (first) {
         const { width, height } = await this.#frameSize(first)
         if (this.canvasEl) {
-          // ★ ここは元のまま: 内部ピクセルは dpr 倍で確保
+          // 内部ピクセルは dpr 倍で確保
           const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1))
           this.canvasEl.style.width = '100%'
           this.canvasEl.style.height = 'auto'
           this.canvasEl.width  = Math.round(width  * dpr)
           this.canvasEl.height = Math.round(height * dpr)
 
-          //this.canvasEl.style.aspectRatio = `${width} / ${height}`
           if (this.ctx) {
-            // ★ 修正ポイント: 以前は setTransform(dpr, 0, 0, dpr, 0, 0)
-            //    → 内部ピクセルに対して等倍で描画するため単位行列にする
+            // 内部ピクセルに対して等倍で描画するため単位行列にする
             this.ctx.setTransform(1, 0, 0, 1, 0, 0)
           }
         }
-        this.#setFrame(0)
+        this.#setFrame(0) // 初期描画
       }
     } catch (error) {
       // 失敗時もローディングクラスが残らないようにする
@@ -294,6 +337,13 @@ export class SeqImgsPlayer {
   }
 
   /**
+   * 互換用途のための破棄メソッド。内部では dispose() を呼び出す。
+   */
+  destroy () {
+    this.dispose()
+  }
+
+  /**
    * プリロード完了を保証。
    * @returns {Promise<void>}
    */
@@ -308,45 +358,58 @@ export class SeqImgsPlayer {
    */
   #advanceFrame () {
     if (!this.preloadedFrames.length) return
-    let nextIndex = this.currentIndex + 1
-    if (nextIndex >= this.preloadedFrames.length) {
-      if (this.options.loop) {
-        nextIndex = 0
-      } else {
-        this.pause()
-        return
+    // null/不正フレームをスキップ
+    let attempts = 0
+    const total = this.preloadedFrames.length
+    while (attempts < total) {
+      let nextIndex = this.currentIndex + 1
+      if (nextIndex >= total) {
+        if (this.options.loop) {
+          nextIndex = 0
+        } else {
+          this.pause()
+          return
+        }
       }
+      this.currentIndex = nextIndex
+      if (this.#setFrame(this.currentIndex)) {
+        return // 描画できたら抜ける
+      }
+      attempts++
     }
-    this.currentIndex = nextIndex
-    this.#setFrame(this.currentIndex)
+    // 一周しても描画できなければ停止
+    this.pause()
   }
 
   /**
    * 指定インデックスのフレームを表示/描画する。
    * @param {number} index
+   * @returns {boolean} 描画できたら true（null等は false）
    */
   #setFrame (index) {
     const frame = this.preloadedFrames[index]
-    if (!frame) return
+    if (!frame) return false
     this.currentIndex = index
 
     if (this.ctx && this.canvasEl) {
       // 内部ピクセル（dpr 適用後のキャンバス width/height）をそのまま利用
       const { width, height } = this.canvasEl
       this.ctx.clearRect(0, 0, width, height)
-      if (frame instanceof ImageBitmap) {
+      // ImageBitmap 未定義ガード付き
+      if ((typeof ImageBitmap !== 'undefined') && (frame instanceof ImageBitmap)) {
         this.ctx.drawImage(frame, 0, 0, width, height)
       } else {
         this.ctx.drawImage(frame, 0, 0, width, height)
       }
     } else if (this.imageEl) {
-      if (frame instanceof ImageBitmap) {
+      if ((typeof ImageBitmap !== 'undefined') && (frame instanceof ImageBitmap)) {
         console.warn('renderTarget: "img" では ImageBitmap を直接表示できません。canvas を使用してください。')
       } else {
         this.imageEl.src = frame.src
       }
     }
 
+    return true
   }
 
   /**
@@ -361,7 +424,12 @@ export class SeqImgsPlayer {
     // HTTPキャッシュを積極活用。リソース名はハッシュ付き前提だと長期キャッシュ可。
     // fetch失敗時は <img> 経由にフォールバック。
     try {
-      const res = await fetch(url, { cache: 'force-cache', credentials: 'same-origin' })
+      /** @type {RequestInit} */
+      const fetchInit = { credentials: 'same-origin' }
+      if (!this.options.disableForceCache) {
+        fetchInit.cache = 'force-cache'
+      }
+      const res = await fetch(url, fetchInit)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const blob = await res.blob()
 
@@ -426,7 +494,7 @@ export class SeqImgsPlayer {
    * @param {ImageBitmap|HTMLImageElement} frame
    */
   async #frameSize (frame) {
-    if (frame instanceof ImageBitmap) {
+    if ((typeof ImageBitmap !== 'undefined') && (frame instanceof ImageBitmap)) {
       return { width: frame.width, height: frame.height }
     } else {
       // 既に load/decode 済み前提
@@ -495,7 +563,8 @@ export class SeqImgsPlayer {
     if (typeof path !== 'string' || path.length === 0) {
       return DEFAULT_OPTIONS.publicPath
     }
-    return path.endsWith('/') ? path : `${path}/`
+    // endsWith() を避け、文字比較で安全に末尾スラッシュ付与
+    return path[path.length - 1] === '/' ? path : (path + '/')
   }
 
   /**
@@ -509,5 +578,52 @@ export class SeqImgsPlayer {
       return DEFAULT_OPTIONS.interval
     }
     return parsed
+  }
+
+  // ===== 追加：ユーティリティ（タイムアウト / 並列制御） =====
+  /**
+   * Promise にタイムアウトを付与。
+   * @template T
+   * @param {Promise<T>} promise
+   * @param {number} ms
+   * @param {string} label
+   * @returns {Promise<T>}
+   */
+  #withTimeout (promise, ms, label) {
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error(`timeout(${ms}ms): ${label}`)), ms)
+      promise.then(
+        (v) => { clearTimeout(t); resolve(v) },
+        (e) => { clearTimeout(t); reject(e) }
+      )
+    })
+  }
+
+  /**
+   * 並列数を制限して配列を処理する。
+   * @template I, O
+   * @param {I[]} items
+   * @param {number} limit
+   * @param {(item:I, index:number)=>Promise<O>} worker
+   * @returns {Promise<O[]>}
+   */
+  async #mapLimit (items, limit, worker) {
+    const ret = new Array(items.length)
+    let i = 0
+    let running = 0
+    return new Promise((resolve) => {
+      const next = () => {
+        if (i >= items.length && running === 0) return resolve(ret)
+        while (running < limit && i < items.length) {
+          const idx = i++
+          running++
+          Promise.resolve(worker(items[idx], idx))
+            .then((v) => { ret[idx] = v })
+            .catch(() => { ret[idx] = null })
+            .finally(() => { running--; next() })
+        }
+      }
+      next()
+    })
   }
 }
